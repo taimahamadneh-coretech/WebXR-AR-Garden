@@ -1,18 +1,18 @@
-# 🌻 WebXR AR Garden
+#  WebXR AR Garden
 
 An augmented reality experience built with WebXR and Three.js. Place virtual sunflowers in your real world environment!
 
-## 🌐 Live Demo
-[Click here to try it live!](https://YOUR_USERNAME.github.io/YOUR_REPOSITORY_NAME/)
+##  Live Demo
+-- coming
 
-## 📱 Features
-- 🌻 Place sunflowers in AR by tapping on surfaces
-- 🎯 Visual reticle for surface targeting
-- 📱 Works on mobile devices (Android + iOS)
-- 🎨 Beautiful UI with clear instructions
-- 🔄 Animated flowers with floating effect
+##  Features
+-  Place sunflowers in AR by tapping on surfaces
+-  Visual reticle for surface targeting
+-  Works on mobile devices (Android + iOS)
+-  Beautiful UI with clear instructions
+-  Animated flowers with floating effect
 
-## 🚀 How to Use
+##  How to Use
 1. Open the link on your mobile device
 2. Click "Start AR Experience"
 3. Allow camera access when prompted
@@ -32,4 +32,4 @@ An augmented reality experience built with WebXR and Three.js. Place virtual sun
 ## 🏗️ Setup for Development
 1. Clone the repository:
 ```bash
-git clone https://github.com/YOUR_USERNAME/YOUR_REPOSITORY_NAME.git
+git clone https://github.com/taimahamadneh-coretech/WebXR-AR-Garden
