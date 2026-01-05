@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebXR AR Garden</title>
+    
+    <!-- three.js from CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.126.0/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.126.0/examples/js/loaders/GLTFLoader.min.js"></script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            color: white;
+        }
+        
+        .container {
+            max-width: 800px;
+            width: 100%;
+            text-align: center;
+        }
+        
+        header {
+            margin-bottom: 40px;
+        }
+        
+        h1 {
+            font-size: 3rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .subtitle {
+            font-size: 1.2rem;
+            opacity: 0.9;
+            margin-bottom: 30px;
+        }
+        
+        .card {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 40px;
+            margin-bottom: 30px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .button {
+            background: linear-gradient(45deg, #4facfe 0%, #00f2fe 100%);
+            border: none;
+            color: white;
+            padding: 18px 36px;
+            font-size: 1.2rem;
+            border-radius: 50px;
+            cursor: pointer;
+            margin: 20px 0;
+            transition: all 0.3s ease;
+            font-weight: bold;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+        }
+        
+        .button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.3);
+        }
+        
+        .button:active {
+            transform: translateY(0);
+        }
+        
+        .button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .instructions {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 25px;
+            border-radius: 15px;
+            margin: 30px 0;
+            text-align: left;
+            border-left: 4px solid #4facfe;
+        }
+        
+        .instructions h3 {
+            margin-bottom: 15px;
+            color: #4facfe;
+        }
+        
+        .instructions ol {
+            padding-left: 20px;
+            line-height: 1.8;
+        }
+        
+        .compatibility {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            justify-content: center;
+            margin: 30px 0;
+        }
+        
+        .device {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 15px 25px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .device i {
+            font-size: 1.5rem;
+        }
+        
+        .status {
+            padding: 15px;
+            border-radius: 10px;
+            margin: 20px 0;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+        
+        .status.success {
+            background: rgba(76, 175, 80, 0.2);
+            border: 1px solid #4CAF50;
+        }
+        
+        .status.error {
+            background: rgba(244, 67, 54, 0.2);
+            border: 1px solid #f44336;
+        }
+        
+        .status.warning {
+            background: rgba(255, 193, 7, 0.2);
+            border: 1px solid #ffc107;
+        }
+        
+        .hidden {
+            display: none;
+        }
+        
+        #ar-view {
+            width: 100%;
+            height: 400px;
+            border-radius: 15px;
+            overflow: hidden;
+            margin: 20px 0;
+            background: black;
+        }
+        
+        canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+        
+        footer {
+            margin-top: 40px;
+            opacity: 0.7;
+            font-size: 0.9rem;
+        }
+        
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 2rem;
+            }
+            
+            .card {
+                padding: 25px;
+            }
+            
+            .button {
+                padding: 15px 30px;
+                font-size: 1rem;
+            }
+        }
+        
+        /* Loader */
+        .loader {
+            border: 5px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top: 5px solid #4facfe;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+    
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1><i class="fas fa-seedling"></i> WebXR AR Garden</h1>
+            <p class="subtitle">Create your own AR garden with sunflowers</p>
+        </header>
+        
+        <main class="card">
+            <div id="status" class="status warning">
+                <i class="fas fa-info-circle"></i> Checking WebXR compatibility...
+            </div>
+            
+            <button id="startButton" class="button" onclick="startWebXR()" disabled>
+                <i class="fas fa-cube"></i> Start AR Experience
+            </button>
+            
+            <div id="loading" class="hidden">
+                <div class="loader"></div>
+                <p>Loading 3D models...</p>
+            </div>
+            
+            <div id="ar-view" class="hidden"></div>
+            
+            <div class="instructions">
+                <h3><i class="fas fa-info-circle"></i> How to use:</h3>
+                <ol>
+                    <li>Click "Start AR Experience" button</li>
+                    <li>Allow camera access when prompted</li>
+                    <li>Move your phone around to detect surfaces</li>
+                    <li>Tap on the screen to place sunflowers</li>
+                    <li>Move around to view from different angles</li>
+                </ol>
+            </div>
+            
+            <div class="compatibility">
+                <div class="device">
+                    <i class="fab fa-android"></i>
+                    <span>Android + Chrome</span>
+                </div>
+                <div class="device">
+                    <i class="fab fa-apple"></i>
+                    <span>iOS 12+ + Safari</span>
+                </div>
+            </div>
+        </main>
+        
+        <footer>
+            <p>Built with three.js & WebXR | Hosted on GitHub Pages</p>
+        </footer>
+    </div>
+
+    <script>
+        // Global variables
+        let xrSession = null;
+        let xrReferenceSpace = null;
+        let hitTestSource = null;
+        let scene = null;
+        let renderer = null;
+        let camera = null;
+        let canvas = null;
+        let gl = null;
+        
+        // 3D Models
+        let sunflower = null;
+        let reticle = null;
+        let modelsLoaded = false;
+        
+        // DOM Elements
+        const startButton = document.getElementById('startButton');
+        const statusDiv = document.getElementById('status');
+        const loadingDiv = document.getElementById('loading');
+        const arView = document.getElementById('ar-view');
+        
+        // Update status message
+        function updateStatus(message, type = 'warning') {
+            statusDiv.innerHTML = `<i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'info-circle'}"></i> ${message}`;
+            statusDiv.className = `status ${type}`;
+        }
+        
+        // Load 3D models
+        async function loadModels() {
+            loadingDiv.classList.remove('hidden');
+            
+            const loader = new THREE.GLTFLoader();
+            
+            // Load reticle (targeting circle)
+            const reticlePromise = new Promise((resolve, reject) => {
+                loader.load(
+                    'https://immersive-web.github.io/webxr-samples/media/gltf/reticle/reticle.gltf',
+                    (gltf) => {
+                        reticle = gltf.scene;
+                        reticle.visible = false;
+                        scene.add(reticle);
+                        resolve();
+                    },
+                    undefined,
+                    (error) => {
+                        console.error('Error loading reticle:', error);
+                        // Create a simple reticle if loading fails
+                        const geometry = new THREE.RingGeometry(0.1, 0.11, 32);
+                        const material = new THREE.MeshBasicMaterial({ 
+                            color: 0xffffff,
+                            side: THREE.DoubleSide,
+                            transparent: true,
+                            opacity: 0.8
+                        });
+                        reticle = new THREE.Mesh(geometry, material);
+                        reticle.rotation.x = -Math.PI / 2;
+                        reticle.visible = false;
+                        scene.add(reticle);
+                        resolve();
+                    }
+                );
+            });
+            
+            // Load sunflower
+            const sunflowerPromise = new Promise((resolve, reject) => {
+                loader.load(
+                    'https://immersive-web.github.io/webxr-samples/media/gltf/sunflower/sunflower.gltf',
+                    (gltf) => {
+                        sunflower = gltf.scene;
+                        resolve();
+                    },
+                    undefined,
+                    (error) => {
+                        console.error('Error loading sunflower:', error);
+                        // Create a simple flower if loading fails
+                        const geometry = new THREE.ConeGeometry(0.1, 0.3, 8);
+                        const material = new THREE.MeshStandardMaterial({ 
+                            color: 0xffd700,
+                            emissive: 0x222200
+                        });
+                        sunflower = new THREE.Mesh(geometry, material);
+                        resolve();
+                    }
+                );
+            });
+            
+            await Promise.all([reticlePromise, sunflowerPromise]);
+            modelsLoaded = true;
+            loadingDiv.classList.add('hidden');
+        }
+        
+        // Start WebXR experience
+        async function startWebXR() {
+            try {
+                updateStatus('Starting AR experience...', 'warning');
+                startButton.disabled = true;
+                
+                // Create canvas and WebGL context
+                canvas = document.createElement('canvas');
+                arView.appendChild(canvas);
+                gl = canvas.getContext('webgl', { xrCompatible: true });
+                
+                if (!gl) {
+                    throw new Error('WebGL not supported');
+                }
+                
+                // Create Three.js scene
+                scene = new THREE.Scene();
+                
+                // Add lighting
+                const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+                directionalLight.position.set(5, 10, 5);
+                scene.add(directionalLight);
+                
+                const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+                scene.add(ambientLight);
+                
+                // Create renderer
+                renderer = new THREE.WebGLRenderer({
+                    canvas: canvas,
+                    context: gl,
+                    alpha: true,
+                    antialias: true
+                });
+                renderer.autoClear = false;
+                renderer.setPixelRatio(window.devicePixelRatio);
+                renderer.setSize(arView.clientWidth, arView.clientHeight);
+                
+                // Create camera
+                camera = new THREE.PerspectiveCamera();
+                camera.matrixAutoUpdate = false;
+                
+                // Load 3D models
+                await loadModels();
+                
+                // Request XR session
+                xrSession = await navigator.xr.requestSession('immersive-ar', {
+                    requiredFeatures: ['hit-test']
+                });
+                
+                updateStatus('AR session started! Move your device around.', 'success');
+                
+                // Update render state
+                xrSession.updateRenderState({
+                    baseLayer: new XRWebGLLayer(xrSession, gl)
+                });
+                
+                // Get reference spaces
+                xrReferenceSpace = await xrSession.requestReferenceSpace('local');
+                const viewerSpace = await xrSession.requestReferenceSpace('viewer');
+                
+                // Create hit test source
+                hitTestSource = await xrSession.requestHitTestSource({ space: viewerSpace });
+                
+                // Show AR view
+                arView.classList.remove('hidden');
+                startButton.classList.add('hidden');
+                
+                // Add tap event listener
+                xrSession.addEventListener('select', onSelect);
+                
+                // Start render loop
+                xrSession.requestAnimationFrame(onXRFrame);
+                
+                // Handle session end
+                xrSession.addEventListener('end', onSessionEnd);
+                
+            } catch (error) {
+                console.error('Failed to start WebXR:', error);
+                updateStatus(`Error: ${error.message}`, 'error');
+                startButton.disabled = false;
+                
+                // Clean up on error
+                if (canvas && canvas.parentNode) {
+                    canvas.parentNode.removeChild(canvas);
+                }
+            }
+        }
+        
+        // Handle tap/select event
+        function onSelect(event) {
+            if (sunflower && reticle && reticle.visible) {
+                const clone = sunflower.clone();
+                clone.position.copy(reticle.position);
+                
+                // Random rotation for variety
+                clone.rotation.y = Math.random() * Math.PI * 2;
+                
+                // Random scale for variety (0.8 to 1.2)
+                const scale = 0.8 + Math.random() * 0.4;
+                clone.scale.set(scale, scale, scale);
+                
+                scene.add(clone);
+                
+                // Add slight animation
+                clone.userData.originalY = clone.position.y;
+                clone.userData.floatOffset = 0;
+                clone.userData.floatSpeed = 0.5 + Math.random() * 1;
+            }
+        }
+        
+        // XR Frame render loop
+        function onXRFrame(time, frame) {
+            if (!xrSession) return;
+            
+            // Request next frame
+            xrSession.requestAnimationFrame(onXRFrame);
+            
+            // Bind framebuffer
+            gl.bindFramebuffer(gl.FRAMEBUFFER, xrSession.renderState.baseLayer.framebuffer);
+            
+            // Get viewer pose
+            const pose = frame.getViewerPose(xrReferenceSpace);
+            
+            if (pose) {
+                const view = pose.views[0];
+                const viewport = xrSession.renderState.baseLayer.getViewport(view);
+                
+                // Update renderer size
+                renderer.setSize(viewport.width, viewport.height);
+                
+                // Update camera from XR view
+                camera.matrix.fromArray(view.transform.matrix);
+                camera.projectionMatrix.fromArray(view.projectionMatrix);
+                camera.updateMatrixWorld(true);
+                
+                // Perform hit test
+                if (hitTestSource) {
+                    const hitTestResults = frame.getHitTestResults(hitTestSource);
+                    
+                    if (hitTestResults.length > 0 && reticle) {
+                        const hitPose = hitTestResults[0].getPose(xrReferenceSpace);
+                        reticle.visible = true;
+                        reticle.position.set(
+                            hitPose.transform.position.x,
+                            hitPose.transform.position.y,
+                            hitPose.transform.position.z
+                        );
+                        
+                        // Make reticle face camera
+                        reticle.lookAt(camera.position);
+                        reticle.rotateX(Math.PI / 2);
+                        
+                        reticle.updateMatrixWorld(true);
+                    } else if (reticle) {
+                        reticle.visible = false;
+                    }
+                }
+                
+                // Update flower animations
+                scene.children.forEach(child => {
+                    if (child.userData.originalY !== undefined) {
+                        child.userData.floatOffset += child.userData.floatSpeed * 0.01;
+                        child.position.y = child.userData.originalY + Math.sin(child.userData.floatOffset) * 0.05;
+                    }
+                });
+                
+                // Render scene
+                renderer.render(scene, camera);
+            }
+        }
+        
+        // Handle session end
+        function onSessionEnd() {
+            updateStatus('AR session ended. Click Start AR Experience to begin again.', 'warning');
+            
+            // Clean up
+            xrSession = null;
+            xrReferenceSpace = null;
+            hitTestSource = null;
+            
+            // Show start button again
+            startButton.classList.remove('hidden');
+            startButton.disabled = false;
+            arView.classList.add('hidden');
+            
+            // Remove canvas
+            if (canvas && canvas.parentNode) {
+                canvas.parentNode.removeChild(canvas);
+            }
+            
+            // Clear scene
+            if (scene) {
+                while(scene.children.length > 0) {
+                    scene.remove(scene.children[0]);
+                }
+                scene = null;
+            }
+        }
+        
+        // Check WebXR compatibility
+        async function checkCompatibility() {
+            if (!navigator.xr) {
+                updateStatus('WebXR is not supported in your browser. Try Chrome on Android or Safari on iOS.', 'error');
+                return;
+            }
+            
+            try {
+                const isSupported = await navigator.xr.isSessionSupported('immersive-ar');
+                
+                if (isSupported) {
+                    updateStatus('Your device supports WebXR AR! Ready to start.', 'success');
+                    startButton.disabled = false;
+                } else {
+                    updateStatus('AR is not supported on your device, but you can try the experience in VR mode.', 'warning');
+                    
+                    // Try immersive-vr as fallback
+                    const vrSupported = await navigator.xr.isSessionSupported('immersive-vr');
+                    if (vrSupported) {
+                        startButton.disabled = false;
+                        startButton.innerHTML = '<i class="fas fa-vr-cardboard"></i> Start VR Experience';
+                    }
+                }
+            } catch (error) {
+                updateStatus(`Error checking WebXR support: ${error.message}`, 'error');
+            }
+        }
+        
+        // Initialize on page load
+        window.addEventListener('load', () => {
+            // Check compatibility
+            checkCompatibility();
+            
+            // Handle resize
+            window.addEventListener('resize', () => {
+                if (arView && renderer && arView.contains(canvas)) {
+                    renderer.setSize(arView.clientWidth, arView.clientHeight);
+                }
+            });
+        });
+        
+        // Handle beforeunload
+        window.addEventListener('beforeunload', () => {
+            if (xrSession) {
+                xrSession.end();
+            }
+        });
+    </script>
+</body>
+</html>
